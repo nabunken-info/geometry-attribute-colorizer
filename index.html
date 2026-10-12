@@ -1848,7 +1848,7 @@ let meshes = [];                 // {mesh, matchName} の配列
 let csvRows = [];                // CSVの行(オブジェクトの配列)
 let csvColumns = [];             // 列名
 let originalMaterials = new Map(); // mesh.uuid -> 元マテリアル
-const APP_VERSION = "1.29.4";     // リリース時に更新する(CHANGELOG.mdと対応)
+const APP_VERSION = "1.30.0";     // リリース時に更新する(CHANGELOG.mdと対応)
 
 let labelEntries = [];           // ラベル { el, worldPos } の配列(定義はラベルセクション)
 let modelSize = 10;              // モデル全体のサイズ(距離カリングの基準に使う)
@@ -4445,6 +4445,7 @@ function loadCSVTable(rows, columns, displayName) {
       buildAttributeMap();
       restoreWorldOffsetFromCSV();   // GLBで切れた測量座標との繋がりを戻す(§6.9)
       applyReference();   // 行が入れ替わったので、前回分も重ね直す
+      syncComboDerived();  // 前回の列が揃ってから「前回と今回」を作る
       refreshAttributeOptions();
       refreshLabelContentOptions();
       const droppedRules = refreshFilterRuleOptions();
@@ -4483,6 +4484,10 @@ function loadCSVFile(file) {
 const NOTE_COL = "Note";
 const NOTE_FLAG_COL = "HasNote";
 const NOTE_YES = "あり", NOTE_NO = "なし";
+
+function comboState(hasPrev, hasNow) {
+  return hasPrev ? (hasNow ? COMBO_BOTH : COMBO_PREV) : (hasNow ? COMBO_NOW : COMBO_NONE);
+}
 
 /* ============================================================
    前回までの記録を「参考」として重ねる(§5.1.4)
@@ -4526,6 +4531,19 @@ const SURVEYOR_COL = "調査者";
 const ZIP_MODEL = "model.glb", ZIP_LEDGER = "台帳.csv";
 /* 記録のファイル名は recordFileName() が日と人から作る(重ならないように) */
 const HIST_PREFIX = "履歴:";   // 記録の台帳から作る集計列
+
+/* 前回と今回を1つの図にまとめた列。点検中にいちばん見たいのは
+   **「前回の指摘で、まだ何も書いていない石」**で、それが「前回のみ」になる。
+   回り終われば「前回のみ」が消える、という読み方ができる。
+
+   値の呼び方は**事実のまま**にする。「未確認」とすると、書いていないことを
+   「見ていない」と機械が解釈したことになる。見たうえで書かない判断もあり、
+   空欄に意味を読ませない方針(§5.1.5)と食い違う */
+const COMBO_COL = HIST_PREFIX + "前回と今回";
+const COMBO_PREV = "前回のみ";
+const COMBO_BOTH = "前回と今回";
+const COMBO_NOW = "今回のみ";
+const COMBO_NONE = "記録なし";
 
 let recordLog = [];        // 読み込んだ記録の全行(全調査日・全調査者)
 
@@ -4757,6 +4775,10 @@ function applyReference() {
 
 /* 重ね直したあとの後始末。属性の選択肢・フィルタ・ラベル・画面を揃える */
 function afterReferenceChange(msgHead, res) {
+  /* 「前回と今回」は**前回の列が揃ってから**でないと作れない。
+     syncNoteDerived の中でも呼んでいるが、そちらは applyReference より前に
+     走るので前回の列がまだ無い。ここで組み直す */
+  syncComboDerived();
   refreshAttributeOptions();
   refreshLabelContentOptions();
   refreshFilterRuleOptions();
@@ -5066,6 +5088,33 @@ function syncNoteDerived() {
   for (const row of csvRows) {
     row[NOTE_FLAG_COL] = String(row[NOTE_COL] ?? "").trim() !== "" ? NOTE_YES : NOTE_NO;
   }
+  const comboAdded = syncComboDerived();
+  return added || comboAdded;
+}
+
+/* 「前回と今回」の列を作り直す。前回の列が無い初回の点検では作らない
+   (前回なしの石しか出ず、「メモの有無」と同じ図になるため) */
+/* 手で書いた瞬間に塗り直す対象かどうか。メモの有無と「前回と今回」は
+   書いた内容そのものが色なので、書いた瞬間に図が動かないと意味がない */
+function isLiveColorColumn(attr) {
+  return attr === NOTE_FLAG_COL || attr === COMBO_COL;
+}
+
+function syncComboDerived() {
+  const prevCol = REF_PREFIX + NOTE_FLAG_COL;
+  const hasPrevCol = csvColumns.includes(prevCol);
+  const hasNowCol = csvColumns.includes(NOTE_FLAG_COL);
+  if (!hasPrevCol || !hasNowCol) {
+    csvColumns = csvColumns.filter((c) => c !== COMBO_COL);
+    for (const row of csvRows) delete row[COMBO_COL];
+    return false;
+  }
+  const added = !csvColumns.includes(COMBO_COL);
+  if (added) csvColumns.push(COMBO_COL);
+  for (const row of csvRows) {
+    row[COMBO_COL] = comboState(String(row[prevCol] ?? "") === NOTE_YES,
+                                String(row[NOTE_FLAG_COL] ?? "") === NOTE_YES);
+  }
   return added;
 }
 
@@ -5359,6 +5408,24 @@ function applyColorize() {
       const fixed = { [NOTE_YES]: PALETTE[0], [NOTE_NO]: OTHER_COLOR };
       sorted = [NOTE_YES, NOTE_NO].filter((c) => c in counts)
         .concat(sorted.filter((c) => !(c in fixed)));   // 想定外の値は通常どおり扱う
+      for (const cat of sorted) {
+        if (cat in fixed) categoryColorCache[cat] = fixed[cat];
+      }
+    }
+
+    /* 「前回と今回」も固定する。**赤は「前回のみ」に当てる**。
+       今回まだ何も書いていない指摘箇所が、いちばん強い色で残る。
+       書けば青に変わるので、赤が消えていくのが回り終わりの目印になる。
+       記録なしはグレー(注目対象外)で、このアプリの語彙に揃える */
+    if (attr === COMBO_COL) {
+      const fixed = {
+        [COMBO_PREV]: PALETTE[0],   // 赤: まだ書いていない前回の指摘
+        [COMBO_BOTH]: PALETTE[1],   // 青: 前回の指摘を見て書いた
+        [COMBO_NOW]: PALETTE[3],    // 橙: 今回あらたに書いた
+        [COMBO_NONE]: OTHER_COLOR,  // グレー: どちらにも記録が無い
+      };
+      sorted = [COMBO_PREV, COMBO_BOTH, COMBO_NOW, COMBO_NONE].filter((c) => c in counts)
+        .concat(sorted.filter((c) => !(c in fixed)));
       for (const cat of sorted) {
         if (cat in fixed) categoryColorCache[cat] = fixed[cat];
       }
@@ -6786,7 +6853,7 @@ function applyGroupNote() {
     refreshFilterRuleOptions();
   }
   scheduleSaveNotes();
-  if (hasApplied && document.getElementById("attribute").value === NOTE_FLAG_COL) applyColorize();
+  if (hasApplied && isLiveColorColumn(document.getElementById("attribute").value)) applyColorize();
   else if (showLabelsCheckbox.checked) rebuildLabels();
   setUnsavedNotes(true);
   updateSelectionUI();
@@ -7738,7 +7805,7 @@ noteInput.addEventListener("input", () => {
   renderInspectorTable(noteTargetRow);   // HasNoteの表示を実際の値に追従させる
   scheduleSaveNotes();
   // 有無で色分け中・ラベル表示中なら、書いた瞬間に図へ反映する
-  if (hasApplied && document.getElementById("attribute").value === NOTE_FLAG_COL) applyColorize();
+  if (hasApplied && isLiveColorColumn(document.getElementById("attribute").value)) applyColorize();
   else if (showLabelsCheckbox.checked) rebuildLabels();
   setUnsavedNotes(true);
 });

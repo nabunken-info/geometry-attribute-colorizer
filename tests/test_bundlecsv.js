@@ -11,7 +11,8 @@
  * 持ち寄って1つのZIPにまとめるとき、全員が「記録.csv」だと重なって
  * 入れられない。日と人を名前に入れて重ならないようにする。
  */
-const { ledgerCSV, recordFileName, rowsToCSV, openingAttribute, REF_PREFIX, NOTE_FLAG_COL } = require("./extracted.js");
+const { ledgerCSV, recordFileName, rowsToCSV, openingAttribute, comboState, isLiveColorColumn,
+        REF_PREFIX, NOTE_FLAG_COL, COMBO_COL, COMBO_PREV, COMBO_BOTH, COMBO_NOW, COMBO_NONE } = require("./extracted.js");
 
 let pass = 0, fail = 0;
 const ok = (c, n, extra) => { c ? pass++ : fail++; console.log("  " + (c ? "OK" : "NG!!") + ": " + n + (extra ? "  " + extra : "")); };
@@ -117,6 +118,37 @@ ok(/\.csv$/.test(recordFileName("2026-10-09", "山田")), "拡張子は.csv");
   ok(openingAttribute([]) === "", "列が空でも落ちない");
   ok(openingAttribute(["ID", "履歴:記録回数"]) === "",
      "履歴の列だけでは切り替えない");
+}
+
+/* ---------- 前回と今回を合わせた図 ---------- */
+/* 点検中にいちばん見たいのは「前回の指摘で、まだ何も書いていない石」。
+   それが「前回のみ」になり、書けば「前回と今回」に移る。
+   回り終われば「前回のみ」が消える、という読み方をする */
+{
+  ok(comboState(true, false) === COMBO_PREV,
+     "前回あり・今回なし → **前回のみ**(まだ書いていない指摘箇所)", comboState(true, false));
+  ok(comboState(true, true) === COMBO_BOTH,
+     "前回あり・今回あり → 前回と今回(見て書いた)", comboState(true, true));
+  ok(comboState(false, true) === COMBO_NOW,
+     "前回なし・今回あり → 今回のみ(新しい指摘)", comboState(false, true));
+  ok(comboState(false, false) === COMBO_NONE,
+     "どちらも無し → 記録なし", comboState(false, false));
+
+  const all = [COMBO_PREV, COMBO_BOTH, COMBO_NOW, COMBO_NONE];
+  ok(new Set(all).size === 4, "4つの値が互いに重ならない");
+  ok(COMBO_COL.startsWith("履歴:"),
+     "**履歴の列として扱う**(書き出すCSVには入らない)", COMBO_COL);
+  ok(!all.includes("未確認"),
+     "「未確認」とは呼ばない(書いていない=見ていない、と機械が決めつけないため)");
+}
+
+/* ---------- 書いた瞬間に塗り直す列 ---------- */
+{
+  ok(isLiveColorColumn(NOTE_FLAG_COL), "メモの有無は書いた瞬間に塗り直す");
+  ok(isLiveColorColumn(COMBO_COL), "**前回と今回も書いた瞬間に塗り直す**(赤→青が見えないと意味がない)");
+  ok(!isLiveColorColumn("Width"), "幅は塗り直さない(手入力で変わらない)");
+  ok(!isLiveColorColumn(REF_PREFIX + NOTE_FLAG_COL),
+     "前回:メモの有無は塗り直さない(今回の記入では動かない値)");
 }
 
 console.log("");

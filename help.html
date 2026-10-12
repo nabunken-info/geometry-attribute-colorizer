@@ -729,6 +729,28 @@
       調査者は次に開いたときも覚えています。
     </p>
 
+    <h3>前回の指摘を、どこまで見たかを追う</h3>
+    <p>
+      前回の記録があるとき、「3. 色分けする」に<strong>履歴:前回と今回</strong>が
+      出てきます。点検中にいちばん役に立つ見方です。
+    </p>
+    <ul>
+      <li><strong>前回のみ（赤）</strong> — 前回に記録があり、<strong>今回まだ何も
+        書いていない石</strong>です。回り残しがここに残ります</li>
+      <li><strong>前回と今回（青）</strong> — 前回の記録があり、今回も書いた石です。
+        赤から青に変わります</li>
+      <li><strong>今回のみ（橙）</strong> — 今回あらたに書いた石です</li>
+      <li><strong>記録なし（グレー）</strong> — どちらにも記録がありません</li>
+    </ul>
+    <p>
+      書いた瞬間に<strong>赤から青へ変わります</strong>。
+      <strong>赤が無くなれば、前回の指摘はひととおり回り終えた</strong>ことになります。
+    </p>
+    <p>
+      「前回のみ」を「未確認」とは呼んでいません。見たうえで書かない判断もあり、
+      <strong>書いていないことを「見ていない」と決めつけない</strong>ためです。
+    </p>
+
     <h3>何度も指摘されている石を見つける</h3>
     <p>
       記録がたまってくると、「3. 色分けする」に<strong>履歴:記録回数</strong>と
@@ -1079,7 +1101,7 @@ df.groupby("Dataset")["Width"].describe()   # データ別に幅を集計</code>
   });
 
   // バージョン表記を一箇所で管理（アプリのAPP_VERSIONと揃える）
-  const HELP_VERSION = "1.29.4";
+  const HELP_VERSION = "1.30.0";
   document.getElementById("ver").textContent = "v" + HELP_VERSION;
   document.getElementById("ver-foot").textContent = "v" + HELP_VERSION;
 

@@ -35,6 +35,8 @@ const FUNCS = [
   "recordFileName",
   "openingAttribute",
   "accumulateFaceNormals",
+  "comboState",
+  "isLiveColorColumn",
   "formatValue",
   "labelText",
   "categoryColorByIndex",
@@ -62,7 +64,7 @@ const FUNCS = [
 ];
 
 // 抽出対象の定数
-const CONSTS = ["PALETTE", "NOTE_COL", "NOTE_LABEL_MAX", "ATTR_INFO", "JP_ZONES", "GEO_ACCEPT_M", "GEO_MARGIN", "REF_PREFIX", "HIST_PREFIX", "NOTE_FLAG_COL",
+const CONSTS = ["PALETTE", "NOTE_COL", "NOTE_LABEL_MAX", "ATTR_INFO", "JP_ZONES", "GEO_ACCEPT_M", "GEO_MARGIN", "REF_PREFIX", "HIST_PREFIX", "NOTE_FLAG_COL", "COMBO_COL", "COMBO_PREV", "COMBO_BOTH", "COMBO_NOW", "COMBO_NONE",
   "FILENAME_NG", "FILENAME_TRIM"];
 
 const root = __dirname;
