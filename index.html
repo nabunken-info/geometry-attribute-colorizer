@@ -1848,7 +1848,7 @@ let meshes = [];                 // {mesh, matchName} の配列
 let csvRows = [];                // CSVの行(オブジェクトの配列)
 let csvColumns = [];             // 列名
 let originalMaterials = new Map(); // mesh.uuid -> 元マテリアル
-const APP_VERSION = "1.29.3";     // リリース時に更新する(CHANGELOG.mdと対応)
+const APP_VERSION = "1.29.4";     // リリース時に更新する(CHANGELOG.mdと対応)
 
 let labelEntries = [];           // ラベル { el, worldPos } の配列(定義はラベルセクション)
 let modelSize = 10;              // モデル全体のサイズ(距離カリングの基準に使う)
@@ -6381,6 +6381,65 @@ function distToSegmentSq(px, py, x0, y0, x1, y1) {
 
 /* 壁全体の平均法線。個々の石の法線は巻き方向次第で表裏が反転しているため、
    「上向き成分が正」ルールで揃えてから平均する(傾きライン・SVG立面図と同じ) */
+/* 三角形の面法線を面積で重み付けして足し込む(外積の長さが面積の2倍になる)。
+   巻き順が揃っている前提で、足した向きが「表」になる。
+   GLBは書き出すときに壁全体の平均法線に合わせて巻き順を揃えてあるので、
+   読み戻したジオメトリからこの方法で表の向きを復元できる。
+   THREE非依存にしてテストできるようにしてある */
+function accumulateFaceNormals(positions, indices, out) {
+  const n = indices ? indices.length : positions.length / 3;
+  for (let i = 0; i + 2 < n; i += 3) {
+    const a = (indices ? indices[i] : i) * 3;
+    const b = (indices ? indices[i + 1] : i + 1) * 3;
+    const c = (indices ? indices[i + 2] : i + 2) * 3;
+    const abx = positions[b] - positions[a];
+    const aby = positions[b + 1] - positions[a + 1];
+    const abz = positions[b + 2] - positions[a + 2];
+    const acx = positions[c] - positions[a];
+    const acy = positions[c + 1] - positions[a + 1];
+    const acz = positions[c + 2] - positions[a + 2];
+    out[0] += aby * acz - abz * acy;
+    out[1] += abz * acx - abx * acz;
+    out[2] += abx * acy - aby * acx;
+  }
+  return out;
+}
+
+/* ジオメトリから求めた壁の表向き。読み込みのたびに1度だけ計算する
+   (ブラシのたびに全三角形を走るのは重い) */
+let geomNormalCache = { src: null, n: null };
+function geometryAverageNormal() {
+  if (geomNormalCache.src === meshes && geomNormalCache.n) return geomNormalCache.n.clone();
+  const acc = [0, 0, 0];
+  for (const { mesh } of meshes) {
+    const pos = mesh.geometry && mesh.geometry.attributes.position;
+    if (!pos || pos.itemSize !== 3) continue;
+    let arr = pos.array;
+    if (pos.isInterleavedBufferAttribute) {
+      arr = new Float32Array(pos.count * 3);
+      for (let k = 0; k < pos.count; k++) { arr[k * 3] = pos.getX(k); arr[k * 3 + 1] = pos.getY(k); arr[k * 3 + 2] = pos.getZ(k); }
+    }
+    const idx = mesh.geometry.index;
+    accumulateFaceNormals(arr, idx ? idx.array : null, acc);
+  }
+  const v = new THREE.Vector3(acc[0], acc[1], acc[2]);
+  const out = v.lengthSq() > 1e-12 ? v.normalize() : new THREE.Vector3(0, 0, 1);
+  geomNormalCache = { src: meshes, n: out.clone() };
+  return out;
+}
+
+/* 壁の表を向いた向き。正面ボタン・SVG立面図・ID振り直し・傾きライン・
+   ブラシの裏面除外が、すべてこの1本を見ている。
+
+   傾きライン(rectLine)はDXFから属性を計算したときにしか無い。
+   **GLBや点検データ(ZIP)から開くと1つも無く**、既定の (0,0,1) を返していた。
+   壁がその向きでなければ正面が裏返る。実際に現地で
+   「正面を押したら裏から見た」「現在地から近くの区画を見ても裏だった」が
+   起きている(v1.29.4で修正)。
+   サンプルは偶然 (0,0,1) に近い向き(内積0.9)だったため気づけなかった。
+
+   rectLineが無いときはジオメトリの面法線から求める。実測で、DXFから計算した
+   法線との内積は0.999だった */
 function wallAverageNormal() {
   const g = new THREE.Vector3();
   const t = new THREE.Vector3();
@@ -6397,7 +6456,8 @@ function wallAverageNormal() {
     if (ref === null) ref = t.clone();
     g.add(t);
   }
-  return g.lengthSq() > 1e-9 ? g.normalize() : g.set(0, 0, 1);
+  if (g.lengthSq() > 1e-9) return g.normalize();
+  return geometryAverageNormal();
 }
 
 /* ブラシが拾う候補を、ストロークの開始時に1度だけ作る。

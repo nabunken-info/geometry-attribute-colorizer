@@ -554,6 +554,25 @@ function openingAttribute(columns) {
   return columns.includes(NOTE_FLAG_COL) ? NOTE_FLAG_COL : "";
 }
 
+function accumulateFaceNormals(positions, indices, out) {
+  const n = indices ? indices.length : positions.length / 3;
+  for (let i = 0; i + 2 < n; i += 3) {
+    const a = (indices ? indices[i] : i) * 3;
+    const b = (indices ? indices[i + 1] : i + 1) * 3;
+    const c = (indices ? indices[i + 2] : i + 2) * 3;
+    const abx = positions[b] - positions[a];
+    const aby = positions[b + 1] - positions[a + 1];
+    const abz = positions[b + 2] - positions[a + 2];
+    const acx = positions[c] - positions[a];
+    const acy = positions[c + 1] - positions[a + 1];
+    const acz = positions[c + 2] - positions[a + 2];
+    out[0] += aby * acz - abz * acy;
+    out[1] += abz * acx - abx * acz;
+    out[2] += abx * acy - aby * acx;
+  }
+  return out;
+}
+
 function formatValue(v) {
   const n = Number(v);
   return (String(v).trim() !== "" && Number.isFinite(n)) ? String(Number(n.toPrecision(5))) : String(v);
@@ -936,4 +955,4 @@ function niceScaleLength(m) {
   return (r >= 5 ? 5 : r >= 2 ? 2 : 1) * p;
 }
 
-module.exports = { PALETTE, NOTE_COL, NOTE_LABEL_MAX, ATTR_INFO, JP_ZONES, GEO_ACCEPT_M, GEO_MARGIN, REF_PREFIX, HIST_PREFIX, NOTE_FLAG_COL, FILENAME_NG, FILENAME_TRIM, normalizeId, ocsToWcs, parseDXF, newellNormal, convexHull2D, minAreaRect2D, computeContourAttributes, hsvToRgb, hexToRgb01, lerpColor, numericToColor, isNumericColumn, symmetricAngleColor, csvEscape, rowsToCSV, ledgerCSV, safeFileNamePart, recordFileName, openingAttribute, formatValue, labelText, categoryColorByIndex, solveFitDistance, solveFitOrtho, flipTriangleWinding, parseGLB, crc32, deflateRaw, buildZip, inflateRaw, readZipEntries, unzip, contourToSegments, thickLineAttributes, distToSegmentSq, normalizeClassValue, isReservedColumn, isDerivedColumn, latLonToJPRect, nearestJPZone, estimateJPZone, toMapXY, niceScaleLength };
+module.exports = { PALETTE, NOTE_COL, NOTE_LABEL_MAX, ATTR_INFO, JP_ZONES, GEO_ACCEPT_M, GEO_MARGIN, REF_PREFIX, HIST_PREFIX, NOTE_FLAG_COL, FILENAME_NG, FILENAME_TRIM, normalizeId, ocsToWcs, parseDXF, newellNormal, convexHull2D, minAreaRect2D, computeContourAttributes, hsvToRgb, hexToRgb01, lerpColor, numericToColor, isNumericColumn, symmetricAngleColor, csvEscape, rowsToCSV, ledgerCSV, safeFileNamePart, recordFileName, openingAttribute, accumulateFaceNormals, formatValue, labelText, categoryColorByIndex, solveFitDistance, solveFitOrtho, flipTriangleWinding, parseGLB, crc32, deflateRaw, buildZip, inflateRaw, readZipEntries, unzip, contourToSegments, thickLineAttributes, distToSegmentSq, normalizeClassValue, isReservedColumn, isDerivedColumn, latLonToJPRect, nearestJPZone, estimateJPZone, toMapXY, niceScaleLength };

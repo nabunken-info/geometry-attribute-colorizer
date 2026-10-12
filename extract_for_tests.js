@@ -34,6 +34,7 @@ const FUNCS = [
   "safeFileNamePart",
   "recordFileName",
   "openingAttribute",
+  "accumulateFaceNormals",
   "formatValue",
   "labelText",
   "categoryColorByIndex",
