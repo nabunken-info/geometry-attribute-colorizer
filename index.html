@@ -1856,7 +1856,7 @@ let meshes = [];                 // {mesh, matchName} の配列
 let csvRows = [];                // CSVの行(オブジェクトの配列)
 let csvColumns = [];             // 列名
 let originalMaterials = new Map(); // mesh.uuid -> 元マテリアル
-const APP_VERSION = "1.31.0";     // リリース時に更新する(CHANGELOG.mdと対応)
+const APP_VERSION = "1.32.0";     // リリース時に更新する(CHANGELOG.mdと対応)
 
 let labelEntries = [];           // ラベル { el, worldPos } の配列(定義はラベルセクション)
 let modelSize = 10;              // モデル全体のサイズ(距離カリングの基準に使う)
@@ -2004,6 +2004,29 @@ const COMPONENT_TYPES = {
 };
 const TYPE_SIZES = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
 
+/* ジオメトリが「輪郭を三角形分割したもの」に見えるかを判定する。
+
+   輪郭モデルは**頂点の並びがそのまま輪郭**で、それを耳切りで分割しているので
+   三角形は必ず n-2 枚になり、どの頂点も1回以上使われる。立方体(8頂点12枚)や
+   球のような一般のメッシュはこの形にならない。
+
+   なぜ要るか: 輪郭の印(extras)を書くようにしたのはv1.32.0からで、
+   **それ以前に作った台紙GLBには印が無い**。印が無いからと切り捨てると、
+   既に記録の入ったZIPを作り直す羽目になり、DXFを読み直せばIDが振り直されて
+   記録との対応が切れる。読む側で見分けられるなら、そちらで吸収する */
+function looksLikeContour(vertexCount, indices) {
+  if (!indices || vertexCount < 3) return false;
+  if (indices.length !== (vertexCount - 2) * 3) return false;
+  const used = new Uint8Array(vertexCount);
+  for (let i = 0; i < indices.length; i++) {
+    const v = indices[i];
+    if (!(v >= 0 && v < vertexCount)) return false;
+    used[v] = 1;
+  }
+  for (let i = 0; i < vertexCount; i++) if (!used[i]) return false;
+  return true;
+}
+
 function parseGLB(arrayBuffer) {
   const dv = new DataView(arrayBuffer);
   // ヘッダー(12バイト)に満たないファイルをそのまま読むと、DataViewが
@@ -2085,6 +2108,14 @@ function buildSceneFromGLTF(json, bin) {
       if (prim.attributes.NORMAL === undefined) geometry.computeVertexNormals();
       const mesh = new THREE.Mesh(geometry, defaultMat());
       mesh.name = group.name;
+      /* 輪郭かどうか。SVG書き出しは頂点の並びを輪郭として使うので、
+         ここで印を立てないと「DXFからでないと書き出せない」ままになる。
+         印(extras)が無い古い台紙GLBは、形から見分ける */
+      const idx = geometry.getIndex();
+      if ((meshDef.extras && meshDef.extras.contour === true) ||
+          looksLikeContour(pos.length / 3, idx ? idx.array : null)) {
+        mesh.userData.isContour = true;
+      }
       group.add(mesh);
     }
     return group;
@@ -3076,7 +3107,11 @@ function buildGLBBytes() {
       primitive.indices = idxAccessor;
     }
 
-    gltfMeshes.push({ primitives: [primitive] });
+    /* 輪郭であることを残す。読み戻したときにSVG立面図を書き出せるようにする。
+       形からも見分けられるようにしてあるが、**書いてあるほうが確か** */
+    const meshDef = { primitives: [primitive] };
+    if (mesh.userData.isContour) meshDef.extras = { contour: true };
+    gltfMeshes.push(meshDef);
     nodes.push({ mesh: gltfMeshes.length - 1, name: String(matchName) });
   }
 
@@ -3686,7 +3721,8 @@ function buildElevationSVG(opt) {
     setStatus(hasContour
       ? "フィルタで全てのオブジェクトが除外されているため、書き出せる図がありません。" +
         String.fromCharCode(10) + "条件を見直すか、フィルタを解除してください。"
-      : "SVG書き出しはDXF/サンプルから読み込んだモデルでのみ利用できます。", true);
+      : "SVG書き出しは輪郭モデルでのみ利用できます。" + String.fromCharCode(10) +
+        "DXF・内蔵サンプル・このアプリが書き出したGLB(点検データのZIPを含む)が対象です。", true);
     return null;
   }
 

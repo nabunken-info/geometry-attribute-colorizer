@@ -44,6 +44,7 @@ const FUNCS = [
   "solveFitOrtho",
   "flipTriangleWinding",
   "parseGLB",
+  "looksLikeContour",
   "crc32",
   "deflateRaw",
   "buildZip",

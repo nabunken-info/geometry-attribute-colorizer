@@ -32,6 +32,7 @@ const TESTS = [
   ["test_fitview.js", "全体表示のフィット"],
   ["test_winding.js", "GLB法線の巻き順"],
   ["test_normal.js", "壁の表向きの復元"],
+  ["test_contour.js", "輪郭モデルの見分け"],
   ["test_adversarial.js", "異常入力への耐性"],
   ["test_badinput.js", "壊れた入力とメッセージ"],
   ["test_rhino_dxf.js", "Rhino形式DXF"],
