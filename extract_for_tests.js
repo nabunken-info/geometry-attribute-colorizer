@@ -45,6 +45,7 @@ const FUNCS = [
   "flipTriangleWinding",
   "parseGLB",
   "looksLikeContour",
+  "unpackRectLine",
   "crc32",
   "deflateRaw",
   "buildZip",

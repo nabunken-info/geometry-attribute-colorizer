@@ -1070,7 +1070,7 @@ df.groupby("Dataset")["Width"].describe()   # データ別に幅を集計</code>
 
     <h3>傾きラインや色分けが反映されない</h3>
     <ul>
-      <li>傾きラインはDXFやサンプルなど、輪郭データを持つモデルで利用できます。</li>
+      <li>傾きラインは、DXF・内蔵サンプル・このアプリが書き出したGLB（点検データのZIPを含む）で利用できます。</li>
       <li>フィルタで除外したオブジェクトには傾きラインも引かれません（意図した連動です）。</li>
     </ul>
 
@@ -1114,7 +1114,7 @@ df.groupby("Dataset")["Width"].describe()   # データ別に幅を集計</code>
   });
 
   // バージョン表記を一箇所で管理（アプリのAPP_VERSIONと揃える）
-  const HELP_VERSION = "1.32.0";
+  const HELP_VERSION = "1.33.0";
   document.getElementById("ver").textContent = "v" + HELP_VERSION;
   document.getElementById("ver-foot").textContent = "v" + HELP_VERSION;
 

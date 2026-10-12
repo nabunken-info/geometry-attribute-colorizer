@@ -12,7 +12,7 @@
  * 作り直させるとDXFの読み直しでIDが振り直され、記録との対応が切れる。
  * そこで形からも見分ける。ここではその見分け方を検証する。
  */
-const { looksLikeContour } = require("./extracted.js");
+const { looksLikeContour, unpackRectLine } = require("./extracted.js");
 
 let pass = 0, fail = 0;
 const ok = (c, n, extra) => { c ? pass++ : fail++; console.log("  " + (c ? "OK" : "NG!!") + ": " + n + (extra ? "  " + extra : "")); };
@@ -70,6 +70,35 @@ ok(!looksLikeContour(4, [0, 1, -1, 0, 2, 3]), "負のインデックスがあれ
   // 典型的な3Dメッシュは拾わない
   ok(!looksLikeContour(20, fan(10).concat(fan(10).map((v) => v + 10))),
      "2つの面を持つメッシュは拾わない");
+}
+
+/* ---------- 傾きラインの素を戻す ---------- */
+/* 線の位置・浮かせ量・矩形の回転角は属性計算の途中結果で、**形からは復元できない**。
+   台紙GLBに書いておき、読むときに戻す。壊れた値のまま描くと線が飛んだり
+   浮かせ量がNaNになって消えたりするので、揃っていないものは返さない */
+{
+  const good = { a: [1, 2, 3], b: [4, 5, 6], n: [0, 0, 1], f: 0.02, angle: 12.3 };
+  const r = unpackRectLine(good);
+  ok(!!r, "揃っていれば戻る");
+  ok(JSON.stringify(r.a) === "[1,2,3]" && JSON.stringify(r.b) === "[4,5,6]", "端点がそのまま戻る");
+  ok(JSON.stringify(r.n) === "[0,0,1]", "法線がそのまま戻る");
+  ok(r.f === 0.02 && r.angle === 12.3, "浮かせ量と角度が戻る");
+  ok(r.a !== good.a, "**元の配列を共有しない**(読み込んだJSONを書き換えない)");
+}
+ok(unpackRectLine(null) === null, "中身が無ければ返さない");
+ok(unpackRectLine(undefined) === null, "undefinedでも落ちない");
+ok(unpackRectLine({}) === null, "空のものは返さない");
+ok(unpackRectLine({ a: [1, 2, 3], b: [4, 5, 6] }) === null, "法線が欠けていれば返さない");
+ok(unpackRectLine({ a: [1, 2], b: [4, 5, 6], n: [0, 0, 1] }) === null, "端点が2つしか無ければ返さない");
+ok(unpackRectLine({ a: [1, 2, "x"], b: [4, 5, 6], n: [0, 0, 1] }) === null, "数でない値が混じれば返さない");
+ok(unpackRectLine({ a: [1, 2, NaN], b: [4, 5, 6], n: [0, 0, 1] }) === null, "**NaNが混じれば返さない**(線が消える原因になる)");
+ok(unpackRectLine({ a: [1, 2, Infinity], b: [4, 5, 6], n: [0, 0, 1] }) === null, "無限大が混じれば返さない");
+{
+  // 浮かせ量と角度は欠けても描ける。0として扱う
+  const r = unpackRectLine({ a: [1, 2, 3], b: [4, 5, 6], n: [0, 0, 1] });
+  ok(!!r && r.f === 0 && r.angle === 0, "浮かせ量と角度が無ければ0にする(線は描ける)");
+  const r2 = unpackRectLine({ a: [1, 2, 3], b: [4, 5, 6], n: [0, 0, 1], f: NaN });
+  ok(!!r2 && r2.f === 0, "浮かせ量がNaNなら0にする");
 }
 
 console.log("");
