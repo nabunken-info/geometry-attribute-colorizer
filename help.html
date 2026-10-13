@@ -764,6 +764,19 @@
       <strong>書いていないことを「見ていない」と決めつけない</strong>ためです。
     </p>
 
+    <h3>誰がどこを見たかを確かめる</h3>
+    <p>
+      複数人の記録を持ち寄って統合したあと、「3. 色分けする」の
+      <strong>履歴:調査者</strong>で、<strong>分担どおりに回れたか</strong>を
+      図で確かめられます。
+    </p>
+    <ul>
+      <li>その石に記録を残した人が<strong>全員並びます</strong>（例「佐藤・山田」）</li>
+      <li><strong>記録なしはグレー</strong>です</li>
+      <li>元になるのは<strong>保存された記録</strong>です。
+        今回の書きかけは、点検データを保存すると入ります</li>
+    </ul>
+
     <h3>何度も指摘されている石を見つける</h3>
     <p>
       記録がたまってくると、「3. 色分けする」に<strong>履歴:記録回数</strong>と
@@ -1114,7 +1127,7 @@ df.groupby("Dataset")["Width"].describe()   # データ別に幅を集計</code>
   });
 
   // バージョン表記を一箇所で管理（アプリのAPP_VERSIONと揃える）
-  const HELP_VERSION = "1.34.0";
+  const HELP_VERSION = "1.35.0";
   document.getElementById("ver").textContent = "v" + HELP_VERSION;
   document.getElementById("ver-foot").textContent = "v" + HELP_VERSION;
 

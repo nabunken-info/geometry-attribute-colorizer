@@ -11,7 +11,7 @@
  * 持ち寄って1つのZIPにまとめるとき、全員が「記録.csv」だと重なって
  * 入れられない。日と人を名前に入れて重ならないようにする。
  */
-const { ledgerCSV, recordFileName, rowsToCSV, openingAttribute, comboState, isLiveColorColumn,
+const { ledgerCSV, recordFileName, rowsToCSV, openingAttribute, comboState, isLiveColorColumn, surveyorLabel, SURVEYOR_NONE,
         REF_PREFIX, NOTE_FLAG_COL, COMBO_COL, COMBO_PREV, COMBO_BOTH, COMBO_NOW, COMBO_NONE } = require("./extracted.js");
 
 let pass = 0, fail = 0;
@@ -149,6 +149,33 @@ ok(/\.csv$/.test(recordFileName("2026-10-09", "山田")), "拡張子は.csv");
   ok(!isLiveColorColumn("Width"), "幅は塗り直さない(手入力で変わらない)");
   ok(!isLiveColorColumn(REF_PREFIX + NOTE_FLAG_COL),
      "前回:メモの有無は塗り直さない(今回の記入では動かない値)");
+}
+
+/* ---------- 点検者別の色分け ---------- */
+/* 持ち寄って統合したあと、誰がどこを見たかを図で確かめるための列。
+   「最後に書いた人」にすると、同じ石に後から別の人が書いた時点で
+   先に見た人の担当範囲が図から消える。分担の確認には全員が要る */
+{
+  ok(surveyorLabel(["山田"]) === "山田", "1人ならその名前", surveyorLabel(["山田"]));
+  ok(surveyorLabel(["山田", "佐藤"]) === surveyorLabel(["佐藤", "山田"]),
+     "**並び順が違っても同じ呼び名**(同じ組み合わせが2色に割れない)", surveyorLabel(["山田", "佐藤"]));
+  ok(surveyorLabel(["山田", "佐藤"]).includes("・"), "複数なら中黒で並べる", surveyorLabel(["山田", "佐藤"]));
+  ok(surveyorLabel(["山田", "山田"]) === "山田", "同じ人が何度書いても1つ");
+  ok(surveyorLabel([]) === SURVEYOR_NONE, "誰も書いていなければ記録なし", surveyorLabel([]));
+  ok(surveyorLabel(null) === SURVEYOR_NONE, "中身が無くても落ちない");
+  ok(surveyorLabel(undefined) === SURVEYOR_NONE, "undefinedでも落ちない");
+  ok(surveyorLabel([" ", ""]) === SURVEYOR_NONE, "空白だけの名前は人数に数えない");
+  ok(surveyorLabel(["  山田  "]) === "山田", "前後の空白は落とす", surveyorLabel(["  山田  "]));
+  ok(surveyorLabel(["山田", "", "佐藤"]) === surveyorLabel(["山田", "佐藤"]),
+     "空の名前が混じっても結果は変わらない");
+  ok(surveyorLabel([null, "山田"]) === "山田", "nullが混じっても落ちない");
+}
+{
+  // 3人以上でも割れない
+  const a = surveyorLabel(["鈴木", "山田", "佐藤"]);
+  const b = surveyorLabel(["佐藤", "鈴木", "山田"]);
+  ok(a === b, "3人でも並び順によらず同じ", a);
+  ok(a.split("・").length === 3, "3人ぶん並ぶ", a);
 }
 
 console.log("");

@@ -1856,7 +1856,7 @@ let meshes = [];                 // {mesh, matchName} の配列
 let csvRows = [];                // CSVの行(オブジェクトの配列)
 let csvColumns = [];             // 列名
 let originalMaterials = new Map(); // mesh.uuid -> 元マテリアル
-const APP_VERSION = "1.34.0";     // リリース時に更新する(CHANGELOG.mdと対応)
+const APP_VERSION = "1.35.0";     // リリース時に更新する(CHANGELOG.mdと対応)
 
 let labelEntries = [];           // ラベル { el, worldPos } の配列(定義はラベルセクション)
 let modelSize = 10;              // モデル全体のサイズ(距離カリングの基準に使う)
@@ -4590,6 +4590,24 @@ const NOTE_COL = "Note";
 const NOTE_FLAG_COL = "HasNote";
 const NOTE_YES = "あり", NOTE_NO = "なし";
 
+const SURVEYOR_NONE = "記録なし";
+
+/* その石に記録を残した人の呼び名。**複数いれば並べる**。
+
+   持ち寄って統合したあと、誰がどこを見たかを図で確かめるための列。
+   「最後に書いた人」にすると、同じ石に後から別の人が書いた時点で
+   先に見た人の担当範囲が図から消える。**分担の確認には全員が要る**。
+
+   並び順は固定する(山田・佐藤 と 佐藤・山田 が別の色になると、
+   同じ組み合わせが2色に割れる) */
+function surveyorLabel(names) {
+  const uniq = [...new Set((names || [])
+    .map((s) => String(s == null ? "" : s).trim())
+    .filter((s) => s !== ""))];
+  if (uniq.length === 0) return SURVEYOR_NONE;
+  return uniq.sort().join("・");
+}
+
 function comboState(hasPrev, hasNow) {
   return hasPrev ? (hasNow ? COMBO_BOTH : COMBO_PREV) : (hasNow ? COMBO_NOW : COMBO_NONE);
 }
@@ -4756,6 +4774,7 @@ function applyRecordLog() {
    2回指摘されたのではなく1回の調査で挙がったもの */
 function syncRecordDerived(valueCols) {
   const countCol = HIST_PREFIX + "記録回数", lastCol = HIST_PREFIX + "最終記録日";
+  const whoCol = HIST_PREFIX + "調査者";
   csvColumns = csvColumns.filter((c) => !c.startsWith(HIST_PREFIX));
   for (const row of csvRows) {
     for (const k of Object.keys(row)) if (k.startsWith(HIST_PREFIX)) delete row[k];
@@ -4764,6 +4783,7 @@ function syncRecordDerived(valueCols) {
 
   const cols = valueCols || recordValueColumns();
   const dates = new Map();   // ID -> 記録のあった調査日の集合
+  const whos = new Map();    // ID -> 記録を残した人の集合
   for (const r of recordLog) {
     let any = false;
     for (const c of cols) if (String(r[c] ?? "").trim() !== "") { any = true; break; }
@@ -4773,6 +4793,11 @@ function syncRecordDerived(valueCols) {
     const k = normalizeId(r.ID);
     if (!dates.has(k)) dates.set(k, new Set());
     dates.get(k).add(d);
+    const who = String(r[SURVEYOR_COL] ?? "").trim();
+    if (who) {
+      if (!whos.has(k)) whos.set(k, new Set());
+      whos.get(k).add(who);
+    }
   }
 
   const idCol = document.getElementById("id-column").value;
@@ -4780,8 +4805,9 @@ function syncRecordDerived(valueCols) {
     const set = dates.get(normalizeId(row[idCol]));
     row[countCol] = set ? set.size : 0;
     row[lastCol] = set ? [...set].sort().pop() : "";
+    row[whoCol] = surveyorLabel([...(whos.get(normalizeId(row[idCol])) || [])]);
   }
-  csvColumns.push(countCol, lastCol);
+  csvColumns.push(countCol, lastCol, whoCol);
 }
 
 /* いま画面にある入力から、今回ぶんの記録の行を作る。
@@ -5526,6 +5552,15 @@ function applyColorize() {
        今回まだ何も書いていない指摘箇所が、いちばん強い色で残る。
        書けば青に変わるので、赤が消えていくのが回り終わりの目印になる。
        記録なしはグレー(注目対象外)で、このアプリの語彙に揃える */
+    /* 調査者は人数ぶんの色が要るのでパレット任せにする。
+       並びだけここで決め、**記録なしを最後に回す**。
+       凡例は色を決めた順に並ぶので、先に色を入れると先頭に出てしまう
+       (人数より「記録なし」のほうが多いため、放っておくと最初に来る) */
+    if (attr === HIST_PREFIX + "調査者") {
+      sorted = sorted.filter((c) => c !== SURVEYOR_NONE).concat(
+        (SURVEYOR_NONE in counts) ? [SURVEYOR_NONE] : []);
+    }
+
     if (attr === COMBO_COL) {
       const fixed = {
         [COMBO_PREV]: PALETTE[0],   // 赤: まだ書いていない前回の指摘
@@ -5558,6 +5593,12 @@ function applyColorize() {
         categoryColorCache[cat] = categoryColorByIndex(i);
       }
     });
+
+    /* 調査者の「記録なし」をグレーにする。**色を入れ直すだけ**なので
+       凡例の並び(=色を決めた順)は変わらない。グレー=注目対象外 */
+    if (attr === HIST_PREFIX + "調査者" && (SURVEYOR_NONE in categoryColorCache)) {
+      categoryColorCache[SURVEYOR_NONE] = OTHER_COLOR;
+    }
   }
   let matched = 0;
   const unmatched = [];
