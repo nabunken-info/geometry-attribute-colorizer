@@ -70,7 +70,7 @@ const HIST_PREFIX = "履歴:";
 
 const NOTE_FLAG_COL = "HasNote";
 
-const COMBO_COL = HIST_PREFIX + "前回と今回";
+const COMBO_COL = HIST_PREFIX + "記録の状況";
 
 const COMBO_PREV = "前回のみ";
 
@@ -563,7 +563,7 @@ function recordFileName(date, who) {
 }
 
 function openingAttribute(columns) {
-  return columns.includes(NOTE_FLAG_COL) ? NOTE_FLAG_COL : "";
+  return columns.includes(COMBO_COL) ? COMBO_COL : "";
 }
 
 function accumulateFaceNormals(positions, indices, out) {
@@ -595,6 +595,13 @@ function surveyorLabel(names) {
     .filter((s) => s !== ""))];
   if (uniq.length === 0) return SURVEYOR_NONE;
   return uniq.sort().join("・");
+}
+
+function isColorizableColumn(col, idCol) {
+  if (col === idCol) return false;
+  if (col === NOTE_COL || col === REF_PREFIX + NOTE_COL) return false;
+  if (col === NOTE_FLAG_COL || col === REF_PREFIX + NOTE_FLAG_COL) return false;
+  return true;
 }
 
 function isLiveColorColumn(attr) {
@@ -1013,4 +1020,4 @@ function niceScaleLength(m) {
   return (r >= 5 ? 5 : r >= 2 ? 2 : 1) * p;
 }
 
-module.exports = { PALETTE, NOTE_COL, NOTE_LABEL_MAX, ATTR_INFO, JP_ZONES, GEO_ACCEPT_M, GEO_MARGIN, REF_PREFIX, HIST_PREFIX, NOTE_FLAG_COL, COMBO_COL, COMBO_PREV, COMBO_BOTH, COMBO_NOW, COMBO_NONE, SURVEYOR_NONE, FILENAME_NG, FILENAME_TRIM, normalizeId, ocsToWcs, parseDXF, newellNormal, convexHull2D, minAreaRect2D, computeContourAttributes, hsvToRgb, hexToRgb01, lerpColor, numericToColor, isNumericColumn, symmetricAngleColor, csvEscape, rowsToCSV, ledgerCSV, safeFileNamePart, recordFileName, openingAttribute, accumulateFaceNormals, comboState, surveyorLabel, isLiveColorColumn, formatValue, labelText, categoryColorByIndex, solveFitDistance, solveFitOrtho, flipTriangleWinding, parseGLB, looksLikeContour, unpackRectLine, contourVertsFromPositions, crc32, deflateRaw, buildZip, inflateRaw, readZipEntries, unzip, contourToSegments, thickLineAttributes, distToSegmentSq, normalizeClassValue, isReservedColumn, isDerivedColumn, latLonToJPRect, nearestJPZone, estimateJPZone, toMapXY, niceScaleLength };
+module.exports = { PALETTE, NOTE_COL, NOTE_LABEL_MAX, ATTR_INFO, JP_ZONES, GEO_ACCEPT_M, GEO_MARGIN, REF_PREFIX, HIST_PREFIX, NOTE_FLAG_COL, COMBO_COL, COMBO_PREV, COMBO_BOTH, COMBO_NOW, COMBO_NONE, SURVEYOR_NONE, FILENAME_NG, FILENAME_TRIM, normalizeId, ocsToWcs, parseDXF, newellNormal, convexHull2D, minAreaRect2D, computeContourAttributes, hsvToRgb, hexToRgb01, lerpColor, numericToColor, isNumericColumn, symmetricAngleColor, csvEscape, rowsToCSV, ledgerCSV, safeFileNamePart, recordFileName, openingAttribute, accumulateFaceNormals, comboState, surveyorLabel, isColorizableColumn, isLiveColorColumn, formatValue, labelText, categoryColorByIndex, solveFitDistance, solveFitOrtho, flipTriangleWinding, parseGLB, looksLikeContour, unpackRectLine, contourVertsFromPositions, crc32, deflateRaw, buildZip, inflateRaw, readZipEntries, unzip, contourToSegments, thickLineAttributes, distToSegmentSq, normalizeClassValue, isReservedColumn, isDerivedColumn, latLonToJPRect, nearestJPZone, estimateJPZone, toMapXY, niceScaleLength };

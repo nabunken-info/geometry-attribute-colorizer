@@ -37,6 +37,7 @@ const FUNCS = [
   "accumulateFaceNormals",
   "comboState",
   "surveyorLabel",
+  "isColorizableColumn",
   "isLiveColorColumn",
   "formatValue",
   "labelText",

@@ -11,8 +11,9 @@
  * 持ち寄って1つのZIPにまとめるとき、全員が「記録.csv」だと重なって
  * 入れられない。日と人を名前に入れて重ならないようにする。
  */
-const { ledgerCSV, recordFileName, rowsToCSV, openingAttribute, comboState, isLiveColorColumn, surveyorLabel, SURVEYOR_NONE,
-        REF_PREFIX, NOTE_FLAG_COL, COMBO_COL, COMBO_PREV, COMBO_BOTH, COMBO_NOW, COMBO_NONE } = require("./extracted.js");
+const { ledgerCSV, recordFileName, rowsToCSV, openingAttribute, comboState, isLiveColorColumn, surveyorLabel, SURVEYOR_NONE, isColorizableColumn,
+        REF_PREFIX, NOTE_FLAG_COL, NOTE_COL, HIST_PREFIX,
+        COMBO_COL, COMBO_PREV, COMBO_BOTH, COMBO_NOW, COMBO_NONE } = require("./extracted.js");
 
 let pass = 0, fail = 0;
 const ok = (c, n, extra) => { c ? pass++ : fail++; console.log("  " + (c ? "OK" : "NG!!") + ": " + n + (extra ? "  " + extra : "")); };
@@ -108,16 +109,29 @@ ok(/\.csv$/.test(recordFileName("2026-10-09", "山田")), "拡張子は.csv");
 /* 点検のために開いたのだから、点検の図で始める。
    ただし初回の点検(前回の記録が無い)では何も変えない */
 {
-  const ref = REF_PREFIX + NOTE_FLAG_COL;
-  ok(openingAttribute(["ID", "Width", NOTE_FLAG_COL]) === NOTE_FLAG_COL,
-     "「メモの有無」で開く(書いた石からその場で色が変わる)", openingAttribute(["ID", "Width", NOTE_FLAG_COL]));
-  ok(openingAttribute(["ID", "Width", NOTE_FLAG_COL, ref]) === NOTE_FLAG_COL,
-     "**前回の記録があっても今回の進捗を出す**(前回の色は書いても動かないため)");
-  ok(openingAttribute(["ID", "Width"]) === "",
-     "メモの列が無ければ何も変えない(存在しない属性を選ばない)");
+  ok(openingAttribute(["ID", "Width", COMBO_COL]) === COMBO_COL,
+     "「記録の状況」で開く(書いた石からその場で色が変わる)", openingAttribute(["ID", "Width", COMBO_COL]));
+  ok(openingAttribute(["ID", "Width", NOTE_FLAG_COL]) === "",
+     "記録の状況の列が無ければ何も変えない(存在しない属性を選ばない)");
   ok(openingAttribute([]) === "", "列が空でも落ちない");
-  ok(openingAttribute(["ID", "履歴:記録回数"]) === "",
-     "履歴の列だけでは切り替えない");
+  ok(openingAttribute(["ID", "履歴:記録回数"]) === "", "履歴の列だけでは切り替えない");
+}
+
+/* ---------- 色分けに出す列 ---------- */
+/* 同じ図を別の名前で何枚も出すと、現場で選ぶ手間が増えるだけだった。
+   メモの有無と前回:メモの有無は、どちらも「履歴:記録の状況」に含まれる */
+{
+  ok(!isColorizableColumn(NOTE_FLAG_COL, "ID"),
+     "**メモの有無は色分けに出さない**(記録の状況に含まれる)");
+  ok(!isColorizableColumn(REF_PREFIX + NOTE_FLAG_COL, "ID"),
+     "**前回:メモの有無も出さない**(同上)");
+  ok(isColorizableColumn(COMBO_COL, "ID"), "記録の状況は出す");
+  ok(!isColorizableColumn(NOTE_COL, "ID"), "メモ本文は出さない(自由記述)");
+  ok(!isColorizableColumn(REF_PREFIX + NOTE_COL, "ID"), "前回のメモ本文も出さない");
+  ok(!isColorizableColumn("ID", "ID"), "ID列は出さない");
+  ok(isColorizableColumn("Width", "ID"), "幅は出す");
+  ok(isColorizableColumn(HIST_PREFIX + "調査者", "ID"), "調査者は出す");
+  ok(isColorizableColumn(HIST_PREFIX + "記録回数", "ID"), "記録回数は出す");
 }
 
 /* ---------- 前回と今回を合わせた図 ---------- */

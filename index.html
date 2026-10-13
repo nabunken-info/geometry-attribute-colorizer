@@ -1856,7 +1856,7 @@ let meshes = [];                 // {mesh, matchName} の配列
 let csvRows = [];                // CSVの行(オブジェクトの配列)
 let csvColumns = [];             // 列名
 let originalMaterials = new Map(); // mesh.uuid -> 元マテリアル
-const APP_VERSION = "1.35.0";     // リリース時に更新する(CHANGELOG.mdと対応)
+const APP_VERSION = "1.36.0";     // リリース時に更新する(CHANGELOG.mdと対応)
 
 let labelEntries = [];           // ラベル { el, worldPos } の配列(定義はラベルセクション)
 let modelSize = 10;              // モデル全体のサイズ(距離カリングの基準に使う)
@@ -4655,14 +4655,19 @@ const ZIP_MODEL = "model.glb", ZIP_LEDGER = "台帳.csv";
 /* 記録のファイル名は recordFileName() が日と人から作る(重ならないように) */
 const HIST_PREFIX = "履歴:";   // 記録の台帳から作る集計列
 
-/* 前回と今回を1つの図にまとめた列。点検中にいちばん見たいのは
-   **「前回の指摘で、まだ何も書いていない石」**で、それが「前回のみ」になる。
-   回り終われば「前回のみ」が消える、という読み方ができる。
+/* 記録の状況を1つにまとめた列。**点検で見る図はこれ1枚**でよい。
+
+   点検中にいちばん見たいのは**「前回の指摘で、まだ何も書いていない石」**で、
+   それが「前回のみ」になる。回り終われば「前回のみ」が消える、という読み方。
+
+   **前回の記録が無い初回の点検でも成立する**。「今回のみ」と「記録なし」の
+   2値になり、書いた石から色が変わる。以前は「メモの有無」を別に持っていたが、
+   同じ図を2つの名前で出していただけだった(v1.36.0で1つにまとめた)。
 
    値の呼び方は**事実のまま**にする。「未確認」とすると、書いていないことを
    「見ていない」と機械が解釈したことになる。見たうえで書かない判断もあり、
    空欄に意味を読ませない方針(§5.1.5)と食い違う */
-const COMBO_COL = HIST_PREFIX + "前回と今回";
+const COMBO_COL = HIST_PREFIX + "記録の状況";
 const COMBO_PREV = "前回のみ";
 const COMBO_BOTH = "前回と今回";
 const COMBO_NOW = "今回のみ";
@@ -5119,10 +5124,10 @@ async function loadBundle(file) {
   if (info.restored) msg += NL + "今回(" + surveyDateValue() + ")のあなたの記録 " + info.restored + " 件を戻しました。";
   if (switched) {
     const done = csvRows.filter((r) => String(r[NOTE_FLAG_COL] ?? "") === NOTE_YES).length;
-    msg += NL + "色分けを「メモの有無」にしました。記録を書いた石から赤くなります" +
+    msg += NL + "色分けを「記録の状況」にしました。記録を書いた石から色が変わります" +
       (done ? "(いま " + done + " 個)。" : "(いまは全部グレーです)。");
     if (refRows.length > 0) {
-      msg += NL + "前回メモのある石は「3. 色分けする」の「前回:メモの有無」で見られます。";
+      msg += NL + "赤 = 前回の記録があって今回まだ書いていない石。書くと青に変わります。";
     }
   }
   if (lastRectLineRestored > 0) {
@@ -5147,7 +5152,7 @@ async function loadBundle(file) {
    伝わらなかった。変えたときは知らせに必ず書く。黙って変えると、
    利用者は自分が選んだ色だと思い込む(§6.1と同じ型) */
 function openingAttribute(columns) {
-  return columns.includes(NOTE_FLAG_COL) ? NOTE_FLAG_COL : "";
+  return columns.includes(COMBO_COL) ? COMBO_COL : "";
 }
 
 /* 参考の読み込み状態を画面に映す。状態だけ消してボタンが残る、を防ぐため
@@ -5201,11 +5206,23 @@ function clearReference() {
 }
 
 /* 色分け・まとめ書き出しに出す列(メモ本文を除く) */
+/* 色分けに出す列かどうか。
+
+   出さないもの:
+   - メモ本文(自由記述。石の数だけ値ができて色にならない)。前回のメモも同じ
+   - **メモの有無・前回:メモの有無**。どちらも「履歴:記録の状況」に含まれる。
+     前者は「今回のみ+前回と今回」、後者は「前回のみ+前回と今回」にあたる。
+     同じ図を別の名前で何枚も出すと、現場で選ぶ手間が増えるだけだった(v1.36.0)。
+     列は残してあるので、フィルタ・ラベル・書き出しでは今までどおり使える */
+function isColorizableColumn(col, idCol) {
+  if (col === idCol) return false;
+  if (col === NOTE_COL || col === REF_PREFIX + NOTE_COL) return false;
+  if (col === NOTE_FLAG_COL || col === REF_PREFIX + NOTE_FLAG_COL) return false;
+  return true;
+}
+
 function visualizableColumns(idCol) {
-  // メモ本文は自由記述なので色分けの対象にしない。前回のメモも同じ扱いにする
-  // (色分けに出すのは「前回メモがあるか」のほう。そちらが追うべき石の一覧になる)
-  const skip = [idCol, NOTE_COL, REF_PREFIX + NOTE_COL];
-  return csvColumns.filter((c) => !skip.includes(c));
+  return csvColumns.filter((c) => isColorizableColumn(c, idCol));
 }
 /* ラベルに出せる列(メモ本文も含む) */
 function labelableColumns(idCol) {
@@ -5227,19 +5244,21 @@ function syncNoteDerived() {
   return added || comboAdded;
 }
 
-/* 「前回と今回」の列を作り直す。前回の列が無い初回の点検では作らない
-   (前回なしの石しか出ず、「メモの有無」と同じ図になるため) */
-/* 手で書いた瞬間に塗り直す対象かどうか。メモの有無と「前回と今回」は
-   書いた内容そのものが色なので、書いた瞬間に図が動かないと意味がない */
+/* 手で書いた瞬間に塗り直す対象かどうか。書いた内容そのものが色なので、
+   書いた瞬間に図が動かないと意味がない。
+   メモの有無は色分けの選択肢から外したが、判定は残しておく(害が無く、
+   選択肢に戻したときに塗り直しの抜けを作らないため) */
 function isLiveColorColumn(attr) {
   return attr === NOTE_FLAG_COL || attr === COMBO_COL;
 }
 
+/* 「記録の状況」の列を作り直す。**前回の記録が無くても作る**(初回の点検では
+   「今回のみ」と「記録なし」の2値になる)。メモの列が無いときだけ作らない */
 function syncComboDerived() {
   const prevCol = REF_PREFIX + NOTE_FLAG_COL;
   const hasPrevCol = csvColumns.includes(prevCol);
   const hasNowCol = csvColumns.includes(NOTE_FLAG_COL);
-  if (!hasPrevCol || !hasNowCol) {
+  if (!hasNowCol) {
     csvColumns = csvColumns.filter((c) => c !== COMBO_COL);
     for (const row of csvRows) delete row[COMBO_COL];
     return false;

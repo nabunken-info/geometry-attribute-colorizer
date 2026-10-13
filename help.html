@@ -562,7 +562,8 @@
 
     <h3>記入済みの箇所を図で見る</h3>
     <p>
-      メモを書くと<strong>「メモの有無」</strong>という属性が自動で作られます。
+      メモを書くと<strong>「メモの有無」</strong>という属性が自動で作られます
+      （書き出すCSVに入ります。色分けで見るときは<strong>「履歴:記録の状況」</strong>を使います）。
       これで色分けすると<strong>記入済みが赤、未記入がグレー</strong>で塗り分けられ、
       どこまで見終えたかが一目で分かります。立面図SVGにも出せます。
     </p>
@@ -699,7 +700,7 @@
     <ul>
       <li><strong>石を選ぶと、メモ欄の上に前回の記述が出ます。</strong>
         灰色の枠で表示され、書き換えることはできません</li>
-      <li><strong>「前回:メモの有無」で色分けすると、前回メモの付いた石だけが赤くなります。</strong>
+      <li><strong>「履歴:記録の状況」で色分けすると、前回メモの付いた石が赤くなります。</strong>
         残りは灰色です。今回追うべき石が、図の上で一目で分かります</li>
       <li>「前回:石種」のように、前回付けた分類でも色分け・フィルタができます</li>
       <li>前回のメモ本文は<strong>ラベル</strong>にも出せます</li>
@@ -744,8 +745,9 @@
 
     <h3>前回の指摘を、どこまで見たかを追う</h3>
     <p>
-      前回の記録があるとき、「3. 色分けする」に<strong>履歴:前回と今回</strong>が
-      出てきます。点検中にいちばん役に立つ見方です。
+      「3. 色分けする」の<strong>履歴:記録の状況</strong>が、点検中にいちばん
+      役に立つ見方です。<strong>前回の記録が無い初回の点検でも使えます</strong>
+      （そのときは「今回のみ」と「記録なし」の2つになります）。
     </p>
     <ul>
       <li><strong>前回のみ（赤）</strong> — 前回に記録があり、<strong>今回まだ何も
@@ -1127,7 +1129,7 @@ df.groupby("Dataset")["Width"].describe()   # データ別に幅を集計</code>
   });
 
   // バージョン表記を一箇所で管理（アプリのAPP_VERSIONと揃える）
-  const HELP_VERSION = "1.35.0";
+  const HELP_VERSION = "1.36.0";
   document.getElementById("ver").textContent = "v" + HELP_VERSION;
   document.getElementById("ver-foot").textContent = "v" + HELP_VERSION;
 
