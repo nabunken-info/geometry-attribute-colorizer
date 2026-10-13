@@ -1856,7 +1856,7 @@ let meshes = [];                 // {mesh, matchName} の配列
 let csvRows = [];                // CSVの行(オブジェクトの配列)
 let csvColumns = [];             // 列名
 let originalMaterials = new Map(); // mesh.uuid -> 元マテリアル
-const APP_VERSION = "1.33.0";     // リリース時に更新する(CHANGELOG.mdと対応)
+const APP_VERSION = "1.34.0";     // リリース時に更新する(CHANGELOG.mdと対応)
 
 let labelEntries = [];           // ラベル { el, worldPos } の配列(定義はラベルセクション)
 let modelSize = 10;              // モデル全体のサイズ(距離カリングの基準に使う)
@@ -2018,6 +2018,18 @@ const TYPE_SIZES = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
 
    壊れた値のまま描くと線が飛んだり、浮かせ量がNaNになって消えたりする。
    **揃っていないものは返さない**(描かないほうが、嘘の線より良い) */
+/* 描画用(Y-up)の頂点配列を、属性計算が使う並び(Z-up)へ戻す。
+   読み込み時に (x, y, z) -> (x, z, -y) と並べ替えているので、その逆をする。
+   原点のずれは残ったままだが、傾き・法線・矩形はずれても変わらないので
+   そのまま計算してよい(戻すときも同じずれのまま使う) */
+function contourVertsFromPositions(positions) {
+  const out = [];
+  for (let i = 0; i + 2 < positions.length; i += 3) {
+    out.push([positions[i], -positions[i + 2], positions[i + 1]]);
+  }
+  return out;
+}
+
 function unpackRectLine(src) {
   if (!src || typeof src !== "object") return null;
   const v3 = (x) => Array.isArray(x) && x.length === 3 &&
@@ -2231,6 +2243,13 @@ function loadGLBBuffer(buffer, displayName) {
         }
       });
 
+      /* 古い台紙GLB(v1.33.0より前)には傾きラインの素が入っていない。
+         輪郭の頂点はジオメトリにそのまま残っているので、**同じ計算をやり直す**。
+         作り直しを求めると、結局DXFを読み直すことになってIDが振り直され、
+         それまでの記録との対応が切れる。読む側で吸収する */
+      lastRectLineRestored = 0;
+      const restored = restoreRectLinesFromGeometry();
+
       frameAll();
       updateDistanceValueText();
       document.getElementById("dropzone-hint").classList.add("hidden");
@@ -2242,7 +2261,12 @@ function loadGLBBuffer(buffer, displayName) {
       document.getElementById("export-svg-btn").disabled = false;
       document.getElementById("export-current-view-svg-btn").disabled = false;
       setDatasetNameFromFile(displayName);
-      setStatus(`GLBを読み込みました: ${meshes.length} メッシュ`);
+      let glbMsg = `GLBを読み込みました: ${meshes.length} メッシュ`;
+      if (restored > 0) {
+        glbMsg += String.fromCharCode(10) +
+          `傾きラインの情報が入っていなかったので、輪郭から計算し直しました(${restored} 個)。`;
+      }
+      setStatus(glbMsg);
       updateStepSummaries();
       updateApplyEnabled();
     }
@@ -5075,6 +5099,10 @@ async function loadBundle(file) {
       msg += NL + "前回メモのある石は「3. 色分けする」の「前回:メモの有無」で見られます。";
     }
   }
+  if (lastRectLineRestored > 0) {
+    msg += NL + "傾きラインの情報が入っていない台紙だったので、輪郭から計算し直しました(" +
+      lastRectLineRestored + " 個)。";
+  }
   if (differed) msg += NL + "※ 同じ石・同じ日・同じ人の行が " + differed + " 件食い違っていました(先に読んだほうを使っています)。";
   setStatus(msg, differed > 0);
 }
@@ -6575,6 +6603,40 @@ function geometryAverageNormal() {
   const out = v.lengthSq() > 1e-12 ? v.normalize() : new THREE.Vector3(0, 0, 1);
   geomNormalCache = { src: meshes, n: out.clone() };
   return out;
+}
+
+/* 傾きラインの素が入っていない輪郭メッシュについて、輪郭から計算し直す。
+   戻した個数を返す。
+
+   **入っているものには触らない。** 書いてある値は元のDXFの精度で出したもので、
+   こちらはGLBのfloat32に丸められた頂点から求め直すため、わずかに劣る。
+   明示されたものを、導いたもので上書きしない */
+let lastRectLineRestored = 0;   // 直近の読み込みで輪郭から計算し直した数
+
+function restoreRectLinesFromGeometry() {
+  let n = 0;
+  for (const { mesh } of meshes) {
+    if (mesh.userData.rectLine) continue;
+    if (!mesh.userData.isContour) continue;
+    const pos = mesh.geometry && mesh.geometry.getAttribute("position");
+    if (!pos || pos.count < 3) continue;
+    const verts = contourVertsFromPositions(pos.array);
+    let attrs = null;
+    try { attrs = computeContourAttributes(verts); } catch (e) { attrs = null; }
+    if (!attrs || !attrs.rectLine) continue;
+    const rl = attrs.rectLine;
+    mesh.userData.rectLine = {
+      a: [rl.a[0], rl.a[2], -rl.a[1]],   // Z-up -> Y-up(読み込み時と同じ並べ替え)
+      b: [rl.b[0], rl.b[2], -rl.b[1]],
+      n: rl.n,
+      f: attrs.flatness,
+      angle: attrs.rectAngle,
+    };
+    n++;
+  }
+  if (n > 0) geomNormalCache = { src: null, n: null };   // 法線の求め方が変わる
+  lastRectLineRestored = n;
+  return n;
 }
 
 /* 壁の表を向いた向き。正面ボタン・SVG立面図・ID振り直し・傾きライン・

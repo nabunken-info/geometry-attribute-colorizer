@@ -46,6 +46,7 @@ const FUNCS = [
   "parseGLB",
   "looksLikeContour",
   "unpackRectLine",
+  "contourVertsFromPositions",
   "crc32",
   "deflateRaw",
   "buildZip",

@@ -12,7 +12,7 @@
  * 作り直させるとDXFの読み直しでIDが振り直され、記録との対応が切れる。
  * そこで形からも見分ける。ここではその見分け方を検証する。
  */
-const { looksLikeContour, unpackRectLine } = require("./extracted.js");
+const { looksLikeContour, unpackRectLine, contourVertsFromPositions } = require("./extracted.js");
 
 let pass = 0, fail = 0;
 const ok = (c, n, extra) => { c ? pass++ : fail++; console.log("  " + (c ? "OK" : "NG!!") + ": " + n + (extra ? "  " + extra : "")); };
@@ -99,6 +99,38 @@ ok(unpackRectLine({ a: [1, 2, Infinity], b: [4, 5, 6], n: [0, 0, 1] }) === null,
   ok(!!r && r.f === 0 && r.angle === 0, "浮かせ量と角度が無ければ0にする(線は描ける)");
   const r2 = unpackRectLine({ a: [1, 2, 3], b: [4, 5, 6], n: [0, 0, 1], f: NaN });
   ok(!!r2 && r2.f === 0, "浮かせ量がNaNなら0にする");
+}
+
+/* ---------- 古い台紙から輪郭の頂点を取り戻す ---------- */
+/* v1.33.0より前の台紙GLBには傾きラインの素が入っていない。輪郭の頂点は
+   ジオメトリに残っているので、属性計算が使う並び(Z-up)へ戻して計算し直す。
+   読み込み時に (x,y,z) -> (x, z, -y) と並べ替えているので、その逆をする */
+{
+  const v = contourVertsFromPositions([1, 2, 3]);
+  ok(v.length === 1, "1頂点ぶん返る", String(v.length));
+  ok(JSON.stringify(v[0]) === "[1,-3,2]",
+     "**並べ替えの逆になっている** (x,y,z) -> (x,-z,y)", JSON.stringify(v[0]));
+}
+{
+  // 往復させると元に戻る(読み込み時の変換と組み合わせて確かめる)
+  const zUp = [[1.5, -2.25, 3.75], [0, 4, -1]];
+  const yUp = [];
+  for (const [x, y, z] of zUp) yUp.push(x, z, -y);     // 読み込み時と同じ並べ替え
+  const back = contourVertsFromPositions(yUp);
+  ok(JSON.stringify(back) === JSON.stringify(zUp),
+     "往復して元の座標に戻る", JSON.stringify(back));
+}
+{
+  const v = contourVertsFromPositions([0,0,0, 1,0,0, 0,0,-1]);
+  ok(v.length === 3, "3頂点ぶん返る", String(v.length));
+}
+ok(contourVertsFromPositions([]).length === 0, "空なら空が返る");
+ok(contourVertsFromPositions([1, 2]).length === 0, "3つに満たない端数は捨てる");
+ok(contourVertsFromPositions([1,2,3, 4,5]).length === 1, "端数があっても揃っている分だけ返す");
+{
+  // GLBから読むと型付き配列になる
+  const v = contourVertsFromPositions(Float32Array.from([1, 2, 3]));
+  ok(v.length === 1 && v[0][0] === 1, "Float32Arrayでも扱える");
 }
 
 console.log("");
