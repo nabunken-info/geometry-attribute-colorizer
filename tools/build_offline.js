@@ -59,6 +59,49 @@ function fetchText(url) {
     html = html.replace(tag, () => inlined);
   }
 
+  /* 配布物にはライセンス表示を必ず入れる。
+
+     この単一HTMLは **LICENSE から切り離されて単体で配られる**ので、
+     ファイル自身が表示を持っていないとMITの条件を満たさない
+     (「著作権表示と許諾表示を、すべての複製物に含めること」)。
+     同梱するThree.jsとPapaParseも同じ理由で表示が要る。
+
+     本文はリポジトリの LICENSE をそのまま読む。書き写すと、
+     権利表示を直したときに配布物だけ古いまま残る。
+
+     HTMLコメントの中では ** を2つ続ける書き方(ハイフン2つ)が使えないので、
+     区切りはイコールで引く */
+  const licenseText = fs.readFileSync(path.join(ROOT, "LICENSE"), "utf8").trim();
+  const indent = (t) => t.split(NEWLINE).map((l) => (l ? "  " + l : "")).join(NEWLINE);
+  const version = (html.match(/APP_VERSION = "([0-9.]+)"/) || [])[1] || "";
+  const banner = [
+    "<!--",
+    "  Geometry Attribute Colorizer" + (version ? " v" + version : "") + " — オフライン配布版(単一ファイル)",
+    "  https://github.com/reisyu/geometry-attribute-colorizer",
+    "",
+    indent(licenseText),
+    "",
+    "  ==================================================================",
+    "  同梱しているライブラリ (いずれもMIT License。条文は上と同じものです)",
+    "  ==================================================================",
+    "",
+    "  Three.js r128",
+    "  Copyright (c) 2010-2021 three.js authors",
+    "  https://github.com/mrdoob/three.js",
+    "",
+    "  Papa Parse 5.4.1",
+    "  Copyright (c) 2015 Matthew Holt",
+    "  https://github.com/mholt/PapaParse",
+    "-->",
+    "",
+  ].join(NEWLINE);
+
+  // DOCTYPEの前にコメントを置かない(古いブラウザで互換モードに落ちる)
+  const doctype = html.match(/^<!DOCTYPE[^>]*>/i);
+  html = doctype
+    ? html.slice(0, doctype[0].length) + NEWLINE + banner + html.slice(doctype[0].length)
+    : banner + html;
+
   fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(OUT, html, "utf8");
 
@@ -67,6 +110,9 @@ function fetchText(url) {
   fs.copyFileSync(path.join(ROOT, "help.html"), path.join(OUT_DIR, "help.html"));
   fs.copyFileSync(path.join(ROOT, "sample_ishigaki.dxf"), path.join(OUT_DIR, "sample_ishigaki.dxf"));
   fs.copyFileSync(path.join(ROOT, "quickstart.html"), path.join(OUT_DIR, "quickstart.html"));
+  // 配布フォルダ自体にも利用条件を入れる。help/quickstartは本体とは別ファイルなので、
+  // フォルダごと渡したときにどれを見ても条件が分かる状態にしておく
+  fs.copyFileSync(path.join(ROOT, "LICENSE"), path.join(OUT_DIR, "LICENSE"));
 
   // 受け取った人が最初に開くファイルを迷わないようにする
   fs.writeFileSync(path.join(OUT_DIR, "はじめにお読みください.txt"), [
@@ -77,9 +123,14 @@ function fetchText(url) {
     "                            ... アプリ本体。ダブルクリックで開く",
     "3. sample_ishigaki.dxf      ... 練習用の石垣データ。アプリにドラッグして読み込む",
     "4. help.html                ... 詳しい操作ガイド(アプリの右上からも開ける)",
+    "5. LICENSE                  ... 利用条件(MIT License)",
     "",
     "インターネット接続は不要です。",
     "読み込んだデータは手元のブラウザ内だけで処理され、外部に送信されません。",
+    "",
+    "このソフトウェアはMIT Licenseで公開されています。",
+    "複製・改変・再配布は自由ですが、著作権表示と許諾表示を残してください。",
+    "全文は同梱の LICENSE、またはアプリ本体の冒頭(HTMLコメント)にあります。",
     "",
   ].join(String.fromCharCode(13) + String.fromCharCode(10)), "utf8");
   console.log(NEWLINE + "作成しました: " + OUT);
