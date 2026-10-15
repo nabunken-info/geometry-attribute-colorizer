@@ -48,6 +48,7 @@ const TESTS = [
   ["test_geoloc.js", "現在地(平面直角座標)"],
   ["test_minimap.js", "俯瞰ミニマップ"],
   ["test_uiscale.js", "文字の大きさ"],
+  ["test_devhost.js", "開発版の印"],
   ["integration_test.js", "実データ統合"],
 ];
 

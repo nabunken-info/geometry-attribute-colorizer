@@ -38,6 +38,7 @@ const FUNCS = [
   "comboState",
   "surveyorLabel",
   "isColorizableColumn",
+  "isDevHost",
   "isLiveColorColumn",
   "formatValue",
   "labelText",

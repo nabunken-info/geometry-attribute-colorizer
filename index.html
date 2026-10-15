@@ -67,6 +67,14 @@
     margin-bottom: 2px;
   }
   #app-version { color: var(--ink-dim); opacity: 0.7; font-size: calc(10px * var(--ui-scale)); }
+  /* 安定版でない公開先で開かれたときの印。現場の人が古いブックマークで
+     開発版を開いても気づけるように、版の隣に常時出す */
+  #dev-badge {
+    display: none; margin-left: 6px; padding: 1px 6px; border-radius: 3px;
+    font-size: calc(10px * var(--ui-scale)); font-weight: 700;
+    color: var(--warn); border: 1px solid var(--warn);
+  }
+  #dev-badge.on { display: inline-block; }
   #help-link {
     display: inline-block;
     color: var(--accent);
@@ -949,7 +957,7 @@
 
 <aside id="sidebar">
   <h1>Geometry Attribute Colorizer</h1>
-  <div class="subtitle">3Dジオメトリの属性計算・色分けビューアー <span id="app-version"></span></div>
+  <div class="subtitle">3Dジオメトリの属性計算・色分けビューアー <span id="app-version"></span><span id="dev-badge" title="安定版ではありません">開発版</span></div>
   <a href="help.html" target="gac-help" id="help-link">? 操作ガイド</a>
 
   <div id="status" style="margin-bottom:12px">モデル(GLB / DXF)を読み込んで開始してください。</div>
@@ -1856,7 +1864,29 @@ let meshes = [];                 // {mesh, matchName} の配列
 let csvRows = [];                // CSVの行(オブジェクトの配列)
 let csvColumns = [];             // 列名
 let originalMaterials = new Map(); // mesh.uuid -> 元マテリアル
-const APP_VERSION = "1.36.0";     // リリース時に更新する(CHANGELOG.mdと対応)
+const APP_VERSION = "1.37.0";     // リリース時に更新する(CHANGELOG.mdと対応)
+
+/* 安定版の公開先。**ここが決まるまでは空のままにする**。
+
+   空の間は何も表示しない。いまはこのURLが唯一の公開先なので、
+   「開発版」と出すほうが嘘になる。
+
+   入れたあとは、ここ以外のホストで開かれたときに「開発版」と出す。
+   現場の人が古いブックマークで開発版を開いても気づけるようにするため。
+   版の数字(v1.36.0)だけでは、それが安定版かどうか分からない */
+const STABLE_URL = "";
+
+/* 開発版として扱うか。THREE非依存・DOM非依存にしてテストできるようにしてある。
+
+   オフライン配布版(file:)は対象外。**あれはリリース版から作るもの**なので、
+   開発版と呼ぶのは誤りになる */
+function isDevHost(hostname, protocol, stableUrl) {
+  if (!stableUrl) return false;
+  if (protocol === "file:") return false;
+  let stableHost;
+  try { stableHost = new URL(stableUrl).hostname; } catch (e) { return false; }
+  return !!stableHost && hostname !== stableHost;
+}
 
 let labelEntries = [];           // ラベル { el, worldPos } の配列(定義はラベルセクション)
 let modelSize = 10;              // モデル全体のサイズ(距離カリングの基準に使う)
@@ -9012,6 +9042,17 @@ document.getElementById("proj-toggle").addEventListener("click", () => {
    ・ヘッダークリックで開閉。初期状態は「1. モデル」「3. 色分け」のみ展開
 ============================================================ */
 document.getElementById("app-version").textContent = "v" + APP_VERSION;
+
+/* 開発版なら、版の隣に印を出し、最初の知らせでも一度だけ伝える。
+   印は常時出して気づける状態を保ち、知らせで「どこへ行けばよいか」を示す */
+if (isDevHost(location.hostname, location.protocol, STABLE_URL)) {
+  document.getElementById("dev-badge").classList.add("on");
+  const NL = String.fromCharCode(10);
+  setTimeout(() => {
+    setStatus("これは開発版です。試験中の変更が入っています。" + NL +
+      "現場では安定版をお使いください: " + STABLE_URL, true);
+  }, 1200);
+}
 
 const stepSummaryEls = [];
 {
