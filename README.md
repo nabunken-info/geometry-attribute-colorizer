@@ -9,9 +9,13 @@
 
 <sub>開いた直後の画面です。大阪城石垣の公開データ(123石。出典は下記)を幅で色分けしています。</sub>
 
-**▶ アプリを開く: https://reisyu.github.io/geometry-attribute-colorizer/**
+**▶ アプリを開く: https://nabunken-info.github.io/geometry-attribute-colorizer/**
 
 開くだけでこの画面になります。**ファイルの用意は要りません。**
+
+<sub>開発版は <a href="https://reisyu.github.io/geometry-attribute-colorizer/">reisyu.github.io/geometry-attribute-colorizer</a> にあります。
+試験中の変更が入っているため、現場では上の安定版をお使いください
+（開発版を開くと画面に「開発版」と出ます）。</sub>
 
 ## 3つだけ挙げるなら
 

@@ -202,7 +202,11 @@ README.md と CLAUDE.md は失敗にする。CHANGELOG.md と SPECIFICATION.md �
 
 ## 現在の状況
 
-- **v1.29.1 を公開中**（https://reisyu.github.io/geometry-attribute-colorizer/）。
+- **公開先は2つ**。奈良文化財研究所のフォークが**安定版**、個人リポジトリが**開発版**
+  - 安定版 https://nabunken-info.github.io/geometry-attribute-colorizer/
+  - 開発版 https://reisyu.github.io/geometry-attribute-colorizer/
+  - 安定版への反映は、フォーク側の「**Sync fork**」ボタンで行う（タグを打って数日おいてから）
+  - `STABLE_URL` 定数で判定し、開発版には画面に印を出す（§12.1.1）
   現在地表示は**屋外での実地確認まで完了**（2026-09）。ただしZIPから開いた場合は
   使えておらず、v1.29.0で修正した（内蔵サンプルの原点が残り続けていた）
 - タグは v1.29.1 まで全て付与済み（`git ls-remote --tags origin` で到着も確認済み）。

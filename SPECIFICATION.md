@@ -1,7 +1,7 @@
 # Geometry Attribute Colorizer 仕様書
 
 作成日: 2026-07-09 / 最終更新: 2026-08-30
-対象バージョン: v1.37.0(APP_VERSION定数がコード内に埋め込まれ、画面とSVG出力に表示される)
+対象バージョン: v1.37.1(APP_VERSION定数がコード内に埋め込まれ、画面とSVG出力に表示される)
 
 この文書は、機能の仕様に加えて「なぜその設計にしたか」という意図を記録するためのものです。
 今後の機能追加・変更の際は、ここに書かれた意図と矛盾しないかを判断基準にしてください。
@@ -1786,7 +1786,7 @@ SVG書き出しの設定は出力の見た目を変えるが、**色の意味は
 #### 実装上の注意
 
 - キーは `gac.settings.v1`。**接頭辞とバージョンを付ける**。GitHub Pagesは
-  `https://reisyu.github.io` というオリジン全体で保管領域を共有し、
+  `https://reisyu.github.io` のようなオリジン全体で保管領域を共有し、
   パスでは分離されないため、他のプロジェクトと衝突しうる
   - ローカルで開いた場合(`file://`)とは別の保管領域になる。公開版とローカル版で
     設定は共有されない
@@ -1986,7 +1986,9 @@ v1.21.0で選択の輪郭線の太さをステップ4(傾きライン)に置い�
 ## 12. 公開・運用
 
 - リポジトリ: `geometry-attribute-colorizer`(GitHub)、MIT License
-- 公開: GitHub Pages(`https://reisyu.github.io/geometry-attribute-colorizer/`)
+- 公開: GitHub Pages。**安定版**(奈文研)と**開発版**(個人)の2つ
+  - 安定版 `https://nabunken-info.github.io/geometry-attribute-colorizer/`
+  - 開発版 `https://reisyu.github.io/geometry-attribute-colorizer/`
 - 同梱物: `index.html` / `help.html` / `README.md` / `LICENSE` /
   `sample_ishigaki.dxf` / `assets/`(READMEの画像)
 - Blenderアドオン版(`CSV_Colorize_Addon`)は凍結。READMEに移行の旨を記す方針
