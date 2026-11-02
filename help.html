@@ -157,6 +157,17 @@
     border-radius: 4px;
     padding: 2px 7px;
   }
+  .pill.dev {
+    background: color-mix(in srgb, var(--warn) 15%, transparent);
+    color: var(--warn);
+  }
+  nav a .nav-dev {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--warn);
+    margin-left: 6px;
+    vertical-align: middle;
+  }
   .pill {
     display: inline-block;
     font-size: 11px;
@@ -228,10 +239,10 @@
     <a href="#s5" class="sub">5. フィルタ</a>
     <a href="#s6" class="sub">6. ラベル</a>
     <a href="#s7" class="sub">7. 書き出す</a>
-    <a href="#note" class="section">メモを書く</a>
+    <a href="#note" class="section">メモを書く<span class="nav-dev">開発中</span></a>
     <a href="#multi" class="section">まとめて選ぶ</a>
     <a href="#classify" class="section">分類を付ける</a>
-    <a href="#prev" class="section">前回の記録を見ながら書く</a>
+    <a href="#prev" class="section">前回の記録を見ながら書く<span class="nav-dev">開発中</span></a>
     <a href="#geo" class="section">現在地を確認する</a>
     <a href="#data" class="section">データの準備</a>
     <a href="#export" class="section">書き出しの使い分け</a>
@@ -532,7 +543,14 @@
     </ul>
 
     <!-- ============ メモ ============ -->
-    <h2 id="note">メモを書く</h2>
+    <h2 id="note">メモを書く <span class="pill dev">開発中</span></h2>
+    <div class="note">
+      <strong>この節と「前回の記録を見ながら書く」は、まだ開発中の機能です。</strong>
+      2026年10月に城郭石垣の管理を担当されている方へ現地で試用していただき、
+      そこで分かったことを反映している段階です。画面の構成や点検データ（ZIP）の
+      中身は今後も変わります。以前の版で書き出したZIP・GLBは読み込めるように
+      していますが、試される際は<strong>記録のCSVを別に保存しておいてください</strong>。
+    </div>
     <p>
       オブジェクトをタップすると右上に属性が出ます。ここに<strong>メモ欄</strong>があり、
       点検の所見などを書き留められます。
@@ -718,7 +736,7 @@
     </div>
 
     <!-- ============ 前回の記録 ============ -->
-    <h2 id="prev">前回の記録を見ながら書く</h2>
+    <h2 id="prev">前回の記録を見ながら書く <span class="pill dev">開発中</span></h2>
     <p>
       前回の調査で書き出したCSVを「<strong>2. 属性データ</strong>」の
       <strong>前回までの記録（参考）</strong>から読み込むと、
